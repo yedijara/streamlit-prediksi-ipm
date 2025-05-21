@@ -4,109 +4,92 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Load model and dataset
+# Load model
 model = joblib.load("rf_ipm_fullvars.pkl")
-df = pd.read_excel("train_inklusi_rf v4.xlsx", sheet_name="Sheet1")
-df = df[df["Tahun"] == 2024].copy()
-df["wilayah"] = df["Kabupaten / Kota"]
 
-# UI - Select region
-selected_region = st.selectbox("Pilih Kabupaten/Kota (2024):", df["wilayah"].unique())
-row = df[df["wilayah"] == selected_region].iloc[0]
+# Load full dataset for default values
+df = pd.read_excel("train_inklusi_rf v4.xlsx", sheet_name="Sheet1")
+df["wilayah"] = df["Kabupaten / Kota"] + " (" + df["Tahun"].astype(str) + ")"
+df_full = df.copy()
+
+# Dropdown
+selected_region = st.selectbox("Pilih Kabupaten/Kota (Tahun 2024):", df[df["Tahun"] == 2024]["wilayah"].unique())
+row = df_full[df_full["wilayah"] == selected_region].iloc[0]
 
 st.sidebar.header("Edit Variabel (otomatis dari data terpilih)")
 
-# Original values
-originals = {
-    "Rekening Tabungan": row["Rekening Tabungan Perorangan Bank"],
-    "Rekening Kredit": row["Rekening Kredit Perorangan Bank"],
-    "Penduduk": row["Jumlah penduduk"],
-    "Kantor Bank": row["Jumlah Kantor Bank"],
-    "Pegadaian": row["Jumlah Kantor Pegadaian"],
-    "PMV": row["Jumlah Kantor PMV"],
-    "PNM": row["Jumlah Kantor PNM"],
-    "ATM": row["Jumlah ATM"],
-    "Agen": row["Jumlah Agen Laku Pandai"],
-    "Luas": row["Luas Terhuni"],
-    "Tabungan Nominal": row["Nominal Tabungan Perorangan Bank "],
-    "Kredit Nominal": row["Nominal Kredit Perorangan Bank"],
-    "PDRB": row["PDRB"]
-}
+rek_tab = st.sidebar.number_input("Rekening Tabungan", value=int(row["Rekening Tabungan Perorangan Bank"]))
+rek_kredit = st.sidebar.number_input("Rekening Kredit", value=int(row["Rekening Kredit Perorangan Bank"]))
+penduduk = st.sidebar.number_input("Jumlah Penduduk", value=int(row["Jumlah penduduk"]))
+kantor_bank = st.sidebar.number_input("Kantor Bank", value=int(row["Jumlah Kantor Bank"]))
+pegadaian = st.sidebar.number_input("Kantor Pegadaian", value=int(row["Jumlah Kantor Pegadaian"]))
+pmv = st.sidebar.number_input("Kantor PMV", value=int(row["Jumlah Kantor PMV"]))
+pnm = st.sidebar.number_input("Kantor PNM", value=int(row["Jumlah Kantor PNM"]))
+atm = st.sidebar.number_input("Jumlah ATM", value=int(row["Jumlah ATM"]))
+agen = st.sidebar.number_input("Agen Laku Pandai", value=int(row["Jumlah Agen Laku Pandai"]))
+luas = st.sidebar.number_input("Luas Wilayah Terhuni (km²)", value=float(row["Luas Terhuni"]))
+nom_tab = st.sidebar.number_input("Nominal Tabungan (Rp)", value=float(row["Nominal Tabungan Perorangan Bank "]), format="%.0f")
+nom_kredit = st.sidebar.number_input("Nominal Kredit (Rp)", value=float(row["Nominal Kredit Perorangan Bank"]), format="%.0f")
+pdrb = st.sidebar.number_input("PDRB (Rp)", value=float(row["PDRB"]), format="%.0f")
 
-# Sliders
-inputs = {
-    k: st.sidebar.number_input(k, value=int(v) if isinstance(v, (int, float)) else v, format="%.0f") for k, v in originals.items()
-}
+# Derived values
+sav_per_pop = rek_tab / penduduk
+loan_per_pop = rek_kredit / penduduk
+bank_per_km = kantor_bank / luas
+nonbank_per_km = (pegadaian + pmv + pnm) / luas
+atm_per_km = atm / luas
+agen_per_km = agen / luas
+dep_ratio = nom_tab / pdrb
+loan_ratio = nom_kredit / pdrb
 
-# Derived
-sav_per_pop = inputs["Rekening Tabungan"] / inputs["Penduduk"]
-loan_per_pop = inputs["Rekening Kredit"] / inputs["Penduduk"]
-bank_per_km = inputs["Kantor Bank"] / inputs["Luas"]
-nonbank_per_km = (inputs["Pegadaian"] + inputs["PMV"] + inputs["PNM"]) / inputs["Luas"]
-atm_per_km = inputs["ATM"] / inputs["Luas"]
-agen_per_km = inputs["Agen"] / inputs["Luas"]
-dep_ratio = inputs["Tabungan Nominal"] / inputs["PDRB"]
-loan_ratio = inputs["Kredit Nominal"] / inputs["PDRB"]
+# Load full data for z-score computation
+df_full["sav_per_pop"] = df_full["Rekening Tabungan Perorangan Bank"] / df_full["Jumlah penduduk"]
+df_full["loan_per_pop"] = df_full["Rekening Kredit Perorangan Bank"] / df_full["Jumlah penduduk"]
+df_full["dep_ratio"] = df_full["Nominal Tabungan Perorangan Bank "] / df_full["PDRB"]
+df_full["loan_ratio"] = df_full["Nominal Kredit Perorangan Bank"] / df_full["PDRB"]
+df_full["bank_per_km"] = df_full["Jumlah Kantor Bank"] / df_full["Luas Terhuni"]
+df_full["nonbank_per_km"] = (
+    df_full["Jumlah Kantor Pegadaian"] + df_full["Jumlah Kantor PMV"] + df_full["Jumlah Kantor PNM"]
+) / df_full["Luas Terhuni"]
+df_full["atm_per_km"] = df_full["Jumlah ATM"] / df_full["Luas Terhuni"]
+df_full["agen_per_km"] = df_full["Jumlah Agen Laku Pandai"] / df_full["Luas Terhuni"]
 
-# Use only 2024 data for z-score reference
-df["sav_per_pop"] = df["Rekening Tabungan Perorangan Bank"] / df["Jumlah penduduk"]
-df["loan_per_pop"] = df["Rekening Kredit Perorangan Bank"] / df["Jumlah penduduk"]
-df["dep_ratio"] = df["Nominal Tabungan Perorangan Bank "] / df["PDRB"]
-df["loan_ratio"] = df["Nominal Kredit Perorangan Bank"] / df["PDRB"]
-df["bank_per_km"] = df["Jumlah Kantor Bank"] / df["Luas Terhuni"]
-df["nonbank_per_km"] = (df["Jumlah Kantor Pegadaian"] + df["Jumlah Kantor PMV"] + df["Jumlah Kantor PNM"]) / df["Luas Terhuni"]
-df["atm_per_km"] = df["Jumlah ATM"] / df["Luas Terhuni"]
-df["agen_per_km"] = df["Jumlah Agen Laku Pandai"] / df["Luas Terhuni"]
-
-df["D2_raw"] = (
-    0.463 * df["bank_per_km"] +
-    0.167 * df["atm_per_km"] +
-    0.074 * df["agen_per_km"] +
-    0.296 * df["nonbank_per_km"]
+df_full["D2_raw"] = (
+    0.463 * df_full["bank_per_km"] +
+    0.167 * df_full["atm_per_km"] +
+    0.074 * df_full["agen_per_km"] +
+    0.296 * df_full["nonbank_per_km"]
 )
 
-def z(val, series): return (val - series.mean()) / series.std()
+# Z-score function
+def z(val, series):
+    return (val - series.mean()) / series.std()
 
 # D1
-Z_sav = z(sav_per_pop, df["sav_per_pop"])
-Z_loan = z(loan_per_pop, df["loan_per_pop"])
+Z_sav = z(sav_per_pop, df_full["sav_per_pop"])
+Z_loan = z(loan_per_pop, df_full["loan_per_pop"])
 D1 = 0.7071 * Z_sav + 0.7071 * Z_loan
 
 # D2
 D2_raw = 0.463 * bank_per_km + 0.167 * atm_per_km + 0.074 * agen_per_km + 0.296 * nonbank_per_km
-D2 = z(D2_raw, df["D2_raw"])
+D2 = z(D2_raw, df_full["D2_raw"])
 
 # D3
-Z_dep = z(dep_ratio, df["dep_ratio"])
-Z_loanR = z(loan_ratio, df["loan_ratio"])
+Z_dep = z(dep_ratio, df_full["dep_ratio"])
+Z_loanR = z(loan_ratio, df_full["loan_ratio"])
 D3 = 0.7071 * Z_dep + 0.7071 * Z_loanR
 
-# AFI
+# Final AFI
 AFI = 0.5017 * D1 + 0.6274 * D2 + 0.3576 * D3
 
 # Predict IPM
-model_input = np.array([[inputs["Rekening Tabungan"], inputs["Rekening Kredit"], inputs["Penduduk"],
-                         inputs["Kantor Bank"], inputs["Pegadaian"], inputs["PMV"], inputs["PNM"],
-                         inputs["ATM"], inputs["Agen"], inputs["Luas"],
-                         inputs["Tabungan Nominal"], inputs["Kredit Nominal"], inputs["PDRB"], AFI]])
-predicted_ipm = model.predict(model_input)[0]
+features = np.array([[rek_tab, rek_kredit, penduduk, kantor_bank, pegadaian, pmv, pnm,
+                      atm, agen, luas, nom_tab, nom_kredit, pdrb, AFI]])
+predicted_ipm = model.predict(features)[0]
 
-# Display
-st.subheader(f"📊 Simulasi untuk: {selected_region}")
+# Output
+st.subheader("📊 Hasil Simulasi")
+st.write(f"**Wilayah:** {selected_region}")
 st.write(f"D1 = {D1:.4f} | D2 = {D2:.4f} | D3 = {D3:.4f}")
 st.write(f"AFI = {AFI:.4f}")
-st.write(" ")
-
-# Original IPM
-if "IPM" in row:
-    st.info(f"🎯 IPM Asli (2024): {row['IPM']:.2f}")
-
-# Predicted IPM
-st.success(f"📈 Prediksi IPM (Simulasi): {predicted_ipm:.2f}")
-
-# List of changed inputs
-changed = {k: (int(v), int(inputs[k])) for k, v in originals.items() if int(v) != int(inputs[k])}
-if changed:
-    st.warning("🛠 Variabel yang diubah:")
-    for k, (old, new) in changed.items():
-        st.write(f"- {k}: {old} → {new}")
+st.success(f"📈 Prediksi IPM: {predicted_ipm:.2f}")
