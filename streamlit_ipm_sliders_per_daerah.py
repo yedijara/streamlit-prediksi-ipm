@@ -13,7 +13,7 @@ df["wilayah"] = df["Kabupaten / Kota"] + " (" + df["Tahun"].astype(str) + ")"
 df_full = df.copy()
 
 # Dropdown
-selected_region = st.selectbox("Pilih Kabupaten/Kota (Tahun 2024):", df[df["Tahun"] == 2024]["wilayah"].unique())
+selected_region = st.selectbox("Pilih Kabupaten/Kota (Semua Tahun):", df_full["wilayah"])
 row = df_full[df_full["wilayah"] == selected_region].iloc[0]
 
 st.sidebar.header("Edit Variabel (otomatis dari data terpilih)")
