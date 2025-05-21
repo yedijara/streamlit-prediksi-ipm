@@ -87,52 +87,8 @@ features = np.array([[rek_tab, rek_kredit, penduduk, kantor_bank, pegadaian, pmv
                       atm, agen, luas, nom_tab, nom_kredit, pdrb, AFI]])
 predicted_ipm = model.predict(features)[0]
 
-
-# Get original IPM from dataset if available
-baseline_ipm = row["IPM"] if "IPM" in row else None
-
-# Compute baseline prediction from original values
-sav_base = row["Rekening Tabungan Perorangan Bank"] / row["Jumlah penduduk"]
-loan_base = row["Rekening Kredit Perorangan Bank"] / row["Jumlah penduduk"]
-dep_base = row["Nominal Tabungan Perorangan Bank "] / row["PDRB"]
-loanr_base = row["Nominal Kredit Perorangan Bank"] / row["PDRB"]
-bank_km_base = row["Jumlah Kantor Bank"] / row["Luas Terhuni"]
-nonbank_km_base = (row["Jumlah Kantor Pegadaian"] + row["Jumlah Kantor PMV"] + row["Jumlah Kantor PNM"]) / row["Luas Terhuni"]
-atm_km_base = row["Jumlah ATM"] / row["Luas Terhuni"]
-agen_km_base = row["Jumlah Agen Laku Pandai"] / row["Luas Terhuni"]
-d2_raw_base = 0.463 * bank_km_base + 0.167 * atm_km_base + 0.074 * agen_km_base + 0.296 * nonbank_km_base
-
-Z_sav_b = z(sav_base, df_full["sav_per_pop"])
-Z_loan_b = z(loan_base, df_full["loan_per_pop"])
-D1_b = 0.7071 * Z_sav_b + 0.7071 * Z_loan_b
-D2_b = z(d2_raw_base, df_full["D2_raw"])
-Z_dep_b = z(dep_base, df_full["dep_ratio"])
-Z_loanR_b = z(loanr_base, df_full["loan_ratio"])
-D3_b = 0.7071 * Z_dep_b + 0.7071 * Z_loanR_b
-AFI_b = 0.5017 * D1_b + 0.6274 * D2_b + 0.3576 * D3_b
-
-X_base = np.array([[row["Rekening Tabungan Perorangan Bank"], row["Rekening Kredit Perorangan Bank"],
-                   row["Jumlah penduduk"], row["Jumlah Kantor Bank"], row["Jumlah Kantor Pegadaian"],
-                   row["Jumlah Kantor PMV"], row["Jumlah Kantor PNM"], row["Jumlah ATM"],
-                   row["Jumlah Agen Laku Pandai"], row["Luas Terhuni"],
-                   row["Nominal Tabungan Perorangan Bank "], row["Nominal Kredit Perorangan Bank"],
-                   row["PDRB"], AFI_b]])
-base_prediction = model.predict(X_base)[0]
-
-# Calculate deviation from base
-deviation = predicted_ipm - base_prediction
-sign = "+" if deviation >= 0 else "-"
-delta_display = f"{sign}{abs(deviation):.2f}"
-
+# Output
 st.subheader("📊 Hasil Simulasi")
-st.write(f"**Wilayah:** {selected_region}")
-st.write(f"D1 = {D1:.4f} | D2 = {D2:.4f} | D3 = {D3:.4f}")
-st.write(f"AFI = {AFI:.4f}")
-if baseline_ipm:
-    st.info(f"🎯 Baseline IPM (asli): {baseline_ipm:.2f}")
-st.success(f"🧮 Simulasi IPM: {predicted_ipm:.2f}")
-st.warning(f"📉 Perubahan terhadap baseline: {delta_display}")
-
 st.write(f"**Wilayah:** {selected_region}")
 st.write(f"D1 = {D1:.4f} | D2 = {D2:.4f} | D3 = {D3:.4f}")
 st.write(f"AFI = {AFI:.4f}")
