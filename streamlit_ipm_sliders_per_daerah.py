@@ -85,6 +85,30 @@ AFI = 0.5017 * D1 + 0.6274 * D2 + 0.3576 * D3
 
 # Predict IPM
 # BASELINE prediction
+
+# === Compute baseline D1, D2, D3, AFI from ORIGINAL values ===
+sav_per_pop_base = originals["Rekening Tabungan"] / originals["Penduduk"]
+loan_per_pop_base = originals["Rekening Kredit"] / originals["Penduduk"]
+bank_per_km_base = originals["Kantor Bank"] / originals["Luas"]
+nonbank_per_km_base = (originals["Pegadaian"] + originals["PMV"] + originals["PNM"]) / originals["Luas"]
+atm_per_km_base = originals["ATM"] / originals["Luas"]
+agen_per_km_base = originals["Agen"] / originals["Luas"]
+dep_ratio_base = originals["Tabungan Nominal"] / originals["PDRB"]
+loan_ratio_base = originals["Kredit Nominal"] / originals["PDRB"]
+
+Z_sav_base = z(sav_per_pop_base, df_full["sav_per_pop"])
+Z_loan_base = z(loan_per_pop_base, df_full["loan_per_pop"])
+D1_base = 0.7071 * Z_sav_base + 0.7071 * Z_loan_base
+
+D2_raw_base = 0.463 * bank_per_km_base + 0.167 * atm_per_km_base + 0.074 * agen_per_km_base + 0.296 * nonbank_per_km_base
+D2_base = z(D2_raw_base, df_full["D2_raw"])
+
+Z_dep_base = z(dep_ratio_base, df_full["dep_ratio"])
+Z_loanR_base = z(loan_ratio_base, df_full["loan_ratio"])
+D3_base = 0.7071 * Z_dep_base + 0.7071 * Z_loanR_base
+
+AFI_base = 0.5017 * D1_base + 0.6274 * D2_base + 0.3576 * D3_base
+
 original_input = np.array([[originals["Rekening Tabungan"], originals["Rekening Kredit"], originals["Penduduk"],
                             originals["Kantor Bank"], originals["Pegadaian"], originals["PMV"], originals["PNM"],
                             originals["ATM"], originals["Agen"], originals["Luas"],
