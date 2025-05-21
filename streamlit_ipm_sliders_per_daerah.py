@@ -82,7 +82,17 @@ D3 = 0.7071 * Z_dep + 0.7071 * Z_loanR
 # Final AFI
 AFI = 0.5017 * D1 + 0.6274 * D2 + 0.3576 * D3
 
+
 # Predict IPM
+# BASELINE prediction
+original_input = np.array([[originals["Rekening Tabungan"], originals["Rekening Kredit"], originals["Penduduk"],
+                            originals["Kantor Bank"], originals["Pegadaian"], originals["PMV"], originals["PNM"],
+                            originals["ATM"], originals["Agen"], originals["Luas"],
+                            originals["Tabungan Nominal"], originals["Kredit Nominal"], originals["PDRB"], AFI]])
+base_prediction = model.predict(original_input)[0]
+
+# CURRENT prediction
+
 features = np.array([[rek_tab, rek_kredit, penduduk, kantor_bank, pegadaian, pmv, pnm,
                       atm, agen, luas, nom_tab, nom_kredit, pdrb, AFI]])
 predicted_ipm = model.predict(features)[0]
